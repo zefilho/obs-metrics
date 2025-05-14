@@ -1,0 +1,68 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: always
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    networks:
+      - monitoring
+    depends_on:
+      - elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.2.0
+    container_name: elasticsearch
+    restart: unless-stopped
+#    restart: always
+    user: root
+    environment:
+      - ES_JAVA_OPTS=-Xms4g -Xmx4g
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - monitoring
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.2.0
+    container_name: kibana
+    restart: unless-stopped
+#    restart: always
+    user: root
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - monitoring
+    depends_on:
+      - elasticsearch
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.2.0
+    container_name: logstash
+    restart: unless-stopped
+#    restart: always
+    user: root
+    volumes:
+      - ./pipeline/:/usr/share/logstash/pipeline/
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    networks:
+      - monitoring
+    depends_on:
+      - elasticsearch
+
+volumes:
+  elasticsearch_data:
+
+networks:
+  monitoring:
+    driver: bridge
